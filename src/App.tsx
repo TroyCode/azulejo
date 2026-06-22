@@ -1,4 +1,3 @@
-import { css } from './css'
 import { useCalculator } from './useCalculator'
 import { deriveView } from './deriveView'
 import Header from './components/Header'
@@ -19,26 +18,26 @@ export default function App() {
   const v = deriveView(state, actions)
 
   return (
-    <div style={css('min-height:100vh; background:#e9dfca; padding:28px 28px 60px; font-family:\'Karla\',sans-serif; color:#34291b;')}>
-      <div style={css('max-width:1180px; margin:0 auto;')}>
+    <div className="min-h-screen bg-page pt-[28px] px-[28px] pb-[60px] font-sans text-ink">
+      <div className="max-w-[1180px] mx-auto">
         <Header v={v} />
 
         {/* Body: two columns */}
-        <div style={css('display:grid; grid-template-columns:374px 1fr; gap:26px; align-items:start;')}>
+        <div className="grid grid-cols-[374px_1fr] gap-[26px] items-start">
 
           {/* ============ LEFT: CONTROLS ============ */}
-          <div style={css('display:flex; flex-direction:column; gap:18px;')}>
+          <div className="flex flex-col gap-[18px]">
             <SizeCard v={v} />
             <RulesCard v={v} />
             <FrameCard v={v} />
             <AdjacencyCard v={v} />
             <QuadCard v={v} />
             <ElementsCard v={v} />
-            <button onClick={v.reshuffle} style={css('border:none; cursor:pointer; background:#27408a; color:#fff7ec; font-family:\'Karla\',sans-serif; font-weight:800; font-size:16px; padding:15px; border-radius:10px; box-shadow:0 3px 0 #1b2c63; letter-spacing:0.5px;')}>重新排列</button>
+            <button onClick={v.reshuffle} className="border-none cursor-pointer bg-azul text-cream font-extrabold text-[16px] p-[15px] rounded-[10px] shadow-[0_3px_0_#1b2c63] tracking-[0.5px]">重新排列</button>
           </div>
 
           {/* ============ RIGHT: RESULT ============ */}
-          <div style={css('display:flex; flex-direction:column; gap:18px;')}>
+          <div className="flex flex-col gap-[18px]">
             <SummaryBar v={v} />
             <Banners v={v} />
             <DisplayBar v={v} />

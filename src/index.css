@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* Brand palette + fonts as theme tokens, so utilities like bg-card, text-ink,
+   border-line, font-serif are generated. Per-element/tile colours are data
+   (state) and stay as inline styles — they are intentionally not tokens. */
+@theme {
+  --font-sans: 'Karla', sans-serif;
+  --font-serif: 'DM Serif Display', serif;
+
+  --color-page: #e9dfca;
+  --color-card: #fbf6ec;
+  --color-line: #d9c8a4;
+  --color-line2: #e6d8ba;
+  --color-ink: #34291b;
+  --color-muted: #9a8a6b;
+  --color-muted2: #8a7a5b;
+  --color-muted3: #7c6c4f;
+  --color-muted4: #a8997a;
+  --color-azul: #27408a;
+  --color-azul-dark: #1b2c63;
+  --color-terra: #c1542d;
+  --color-terra-dark: #8f3a1d;
+  --color-gold: #e0a72e;
+  --color-sage: #5d8a5a;
+  --color-cream: #fff7ec;
+  --color-track: #d3c4a3;
+  --color-segment: #efe7d6;
+}
+
+/* Base resets carried over from the old inline <style> in index.html. */
+@layer base {
+  body {
+    margin: 0;
+    background: var(--color-page);
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+  }
+  input:focus { outline: none; }
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { opacity: 0.4; }
+  input[type=color] { -webkit-appearance: none; appearance: none; border: none; padding: 0; background: none; cursor: pointer; }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type=color]::-webkit-color-swatch { border: none; border-radius: 5px; }
+  ::placeholder { color: #b3a589; }
+}

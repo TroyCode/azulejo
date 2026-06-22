@@ -1,5 +1,3 @@
-import { css } from '../../css'
-
 interface ToggleProps {
   onClick: () => void
   title: string
@@ -11,13 +9,13 @@ interface ToggleProps {
 // Reusable labelled toggle row (title + description + switch).
 export default function Toggle({ onClick, title, desc, track, knob }: ToggleProps) {
   return (
-    <div onClick={onClick} style={css('display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; padding:8px 0;')}>
+    <div onClick={onClick} className="flex items-center justify-between gap-[12px] cursor-pointer py-[8px]">
       <div>
-        <div style={css('font-size:15px; font-weight:700;')}>{title}</div>
-        <div style={css('font-size:12px; color:#9a8a6b; margin-top:2px;')}>{desc}</div>
+        <div className="text-[15px] font-bold">{title}</div>
+        <div className="text-[12px] text-muted mt-[2px]">{desc}</div>
       </div>
-      <div style={css(`width:46px; height:26px; flex:none; border-radius:14px; background:${track}; position:relative; transition:background .15s;`)}>
-        <div style={css(`position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transform:${knob}; transition:transform .15s;`)}></div>
+      <div className="w-[46px] h-[26px] flex-none rounded-[14px] relative transition-[background] duration-150" style={{ background: track }}>
+        <div className="absolute top-[3px] left-[3px] w-[20px] h-[20px] rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.3)] transition-[transform] duration-150" style={{ transform: knob }}></div>
       </div>
     </div>
   )

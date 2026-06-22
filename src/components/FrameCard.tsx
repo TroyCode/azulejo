@@ -1,29 +1,28 @@
-import { css } from '../css'
 import type { View } from '../deriveView'
 
 export default function FrameCard({ v }: { v: View }) {
   return (
-    <div style={css('background:#fbf6ec; border:1.5px solid #d9c8a4; border-radius:12px; padding:18px;')}>
-      <div onClick={v.toggleFrame} style={css('display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;')}>
+    <div className="bg-card border-[1.5px] border-line rounded-[12px] p-[18px]">
+      <div onClick={v.toggleFrame} className="flex items-center justify-between gap-[12px] cursor-pointer">
         <div>
-          <div style={css('font-family:\'DM Serif Display\',serif; font-size:18px; color:#27408a;')}>四周畫框</div>
-          <div style={css('font-size:12px; color:#9a8a6b; margin-top:2px;')}>外圈不鋪磁磚,留單色邊框</div>
+          <div className="font-serif text-[18px] text-azul">四周畫框</div>
+          <div className="text-[12px] text-muted mt-[2px]">外圈不鋪磁磚,留單色邊框</div>
         </div>
-        <div style={css(`width:46px; height:26px; flex:none; border-radius:14px; background:${v.frameTrack}; position:relative; transition:background .15s;`)}>
-          <div style={css(`position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.3); transform:${v.frameKnob}; transition:transform .15s;`)}></div>
+        <div className="w-[46px] h-[26px] flex-none rounded-[14px] relative transition-[background] duration-150" style={{ background: v.frameTrack }}>
+          <div className="absolute top-[3px] left-[3px] w-[20px] h-[20px] rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.3)] transition-[transform] duration-150" style={{ transform: v.frameKnob }}></div>
         </div>
       </div>
       {v.frameOn && (
-        <div style={css('display:flex; align-items:center; gap:16px; margin-top:14px;')}>
-          <div style={css('display:flex; align-items:center; gap:8px;')}>
-            <span style={css('font-size:12px; font-weight:700; color:#8a7a5b;')}>厚度</span>
-            <button onClick={v.decFrame} style={css('width:30px; height:32px; border:1.5px solid #d9c8a4; background:#f4ecdb; border-radius:7px; font-size:18px; font-weight:700; color:#7c6c4f; cursor:pointer;')}>−</button>
-            <span style={css('min-width:42px; text-align:center; font-size:14px; font-weight:800; color:#34291b;')}>{v.frameWidthLabel}</span>
-            <button onClick={v.incFrame} style={css('width:30px; height:32px; border:1.5px solid #d9c8a4; background:#f4ecdb; border-radius:7px; font-size:18px; font-weight:700; color:#7c6c4f; cursor:pointer;')}>+</button>
+        <div className="flex items-center gap-[16px] mt-[14px]">
+          <div className="flex items-center gap-[8px]">
+            <span className="text-[12px] font-bold text-muted2">厚度</span>
+            <button onClick={v.decFrame} className="w-[30px] h-[32px] border-[1.5px] border-line bg-[#f4ecdb] rounded-[7px] text-[18px] font-bold text-muted3 cursor-pointer">−</button>
+            <span className="min-w-[42px] text-center text-[14px] font-extrabold text-ink">{v.frameWidthLabel}</span>
+            <button onClick={v.incFrame} className="w-[30px] h-[32px] border-[1.5px] border-line bg-[#f4ecdb] rounded-[7px] text-[18px] font-bold text-muted3 cursor-pointer">+</button>
           </div>
-          <div style={css('display:flex; align-items:center; gap:8px;')}>
-            <span style={css('font-size:12px; font-weight:700; color:#8a7a5b;')}>顏色</span>
-            <input type="color" value={v.frameColor} onChange={v.onFrameColor} style={css('width:34px; height:32px;')} />
+          <div className="flex items-center gap-[8px]">
+            <span className="text-[12px] font-bold text-muted2">顏色</span>
+            <input type="color" value={v.frameColor} onChange={v.onFrameColor} className="w-[34px] h-[32px]" />
           </div>
         </div>
       )}
