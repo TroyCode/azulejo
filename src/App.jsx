@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { css } from './css.js'
 import { dims, textColor, solve } from './solver.js'
 
+// Prefix bundled tile art with Vite's base URL so it resolves under the
+// GitHub Pages project path in production and at "/" during local dev.
+const tile = (name) => `${import.meta.env.BASE_URL}tiles/${name}`
+
 const INITIAL = {
   areaW: 200,
   areaH: 160,
@@ -23,18 +27,18 @@ const INITIAL = {
   fpB: null,
   even: true,
   elements: [
-    { name: 'A', quantity: 13, variations: 1, color: '#2d4b8e', img: '/tiles/tile_A.png' },
-    { name: 'B', quantity: 4, variations: 4, color: '#c1542d', img: '/tiles/tile_B.png' },
-    { name: 'C', quantity: 10, variations: 4, color: '#e0a72e', img: '/tiles/tile_C.png' },
-    { name: 'D', quantity: 8, variations: 1, color: '#5d8a5a', img: '/tiles/tile_D.png' },
-    { name: 'E', quantity: 3, variations: 4, color: '#2f8a8c', img: '/tiles/tile_E.png' },
-    { name: 'F', quantity: 13, variations: 4, color: '#a23b2c', img: '/tiles/tile_F.png' },
-    { name: 'G', quantity: 8, variations: 1, color: '#b07d2e', img: '/tiles/tile_G.png' },
-    { name: 'H', quantity: 5, variations: 1, color: '#834a72', img: '/tiles/tile_H.png' },
-    { name: 'I', quantity: 7, variations: 1, color: '#4a6fa5', img: '/tiles/tile_I.png' },
-    { name: 'J', quantity: 8, variations: 4, color: '#7d8a3a', img: '/tiles/tile_J.png' },
-    { name: 'K', quantity: 15, variations: 2, color: '#b5446a', img: '/tiles/tile_K.png' },
-    { name: 'L', quantity: 8, variations: 2, color: '#356a4f', img: '/tiles/tile_L.png' },
+    { name: 'A', quantity: 13, variations: 1, color: '#2d4b8e', img: tile('tile_A.png') },
+    { name: 'B', quantity: 4, variations: 4, color: '#c1542d', img: tile('tile_B.png') },
+    { name: 'C', quantity: 10, variations: 4, color: '#e0a72e', img: tile('tile_C.png') },
+    { name: 'D', quantity: 8, variations: 1, color: '#5d8a5a', img: tile('tile_D.png') },
+    { name: 'E', quantity: 3, variations: 4, color: '#2f8a8c', img: tile('tile_E.png') },
+    { name: 'F', quantity: 13, variations: 4, color: '#a23b2c', img: tile('tile_F.png') },
+    { name: 'G', quantity: 8, variations: 1, color: '#b07d2e', img: tile('tile_G.png') },
+    { name: 'H', quantity: 5, variations: 1, color: '#834a72', img: tile('tile_H.png') },
+    { name: 'I', quantity: 7, variations: 1, color: '#4a6fa5', img: tile('tile_I.png') },
+    { name: 'J', quantity: 8, variations: 4, color: '#7d8a3a', img: tile('tile_J.png') },
+    { name: 'K', quantity: 15, variations: 2, color: '#b5446a', img: tile('tile_K.png') },
+    { name: 'L', quantity: 8, variations: 2, color: '#356a4f', img: tile('tile_L.png') },
   ],
   grid: null,
   vmap: null,
