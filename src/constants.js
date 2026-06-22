@@ -1,0 +1,53 @@
+// Prefix bundled tile art with Vite's base URL so it resolves under the
+// GitHub Pages project path in production and at "/" during local dev.
+const tile = (name) => `${import.meta.env.BASE_URL}tiles/${name}`
+
+export const INITIAL = {
+  areaW: 200,
+  areaH: 160,
+  tileW: 20,
+  tileH: 20,
+  slice: true,
+  alignX: 'right',
+  alignY: 'bottom',
+  displayMode: 'image',
+  showLabels: true,
+  seam: true,
+  sudoku: true,
+  colUnique: false,
+  rowUnique: false,
+  disperse: false,
+  disperseStrength: 3,
+  forbiddenPairs: [],
+  fpA: null,
+  fpB: null,
+  even: true,
+  elements: [
+    { name: 'A', quantity: 13, variations: 1, color: '#2d4b8e', img: tile('tile_A.png') },
+    { name: 'B', quantity: 4, variations: 4, color: '#c1542d', img: tile('tile_B.png') },
+    { name: 'C', quantity: 10, variations: 4, color: '#e0a72e', img: tile('tile_C.png') },
+    { name: 'D', quantity: 8, variations: 1, color: '#5d8a5a', img: tile('tile_D.png') },
+    { name: 'E', quantity: 3, variations: 4, color: '#2f8a8c', img: tile('tile_E.png') },
+    { name: 'F', quantity: 13, variations: 4, color: '#a23b2c', img: tile('tile_F.png') },
+    { name: 'G', quantity: 8, variations: 1, color: '#b07d2e', img: tile('tile_G.png') },
+    { name: 'H', quantity: 5, variations: 1, color: '#834a72', img: tile('tile_H.png') },
+    { name: 'I', quantity: 7, variations: 1, color: '#4a6fa5', img: tile('tile_I.png') },
+    { name: 'J', quantity: 8, variations: 4, color: '#7d8a3a', img: tile('tile_J.png') },
+    { name: 'K', quantity: 15, variations: 2, color: '#b5446a', img: tile('tile_K.png') },
+    { name: 'L', quantity: 8, variations: 2, color: '#356a4f', img: tile('tile_L.png') },
+  ],
+  grid: null,
+  vmap: null,
+  warning: null,
+  combos: null,
+  stale: false,
+  quadEls: [],
+  quadStart: {},
+  quadPins: [],
+  placeMode: null,
+  frameOn: false,
+  frameWidth: 1,
+  frameColor: '#e7d9b6',
+}
+
+export const PALETTE = ['#2d4b8e', '#c1542d', '#e0a72e', '#5d8a5a', '#2f8a8c', '#a23b2c', '#b07d2e', '#834a72', '#4a6fa5', '#7d8a3a', '#b5446a', '#356a4f', '#8a5a2b', '#5a5fa0', '#3f7fa0', '#94303f']
