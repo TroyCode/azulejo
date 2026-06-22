@@ -1,7 +1,15 @@
-import { css } from '../../css.js'
+import { css } from '../../css'
+
+interface ToggleProps {
+  onClick: () => void
+  title: string
+  desc: string
+  track: string
+  knob: string
+}
 
 // Reusable labelled toggle row (title + description + switch).
-export default function Toggle({ onClick, title, desc, track, knob }) {
+export default function Toggle({ onClick, title, desc, track, knob }: ToggleProps) {
   return (
     <div onClick={onClick} style={css('display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; padding:8px 0;')}>
       <div>

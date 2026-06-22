@@ -6,22 +6,29 @@ slicing, adjacency restrictions, 2×2 rotation medallions, framing, and
 simulated-annealing dispersion.
 
 Ported from a Claude Design prototype (`花磚排列計算器.dc.html`) to a standalone
-React + Vite app — no proprietary runtime.
+React + TypeScript + Vite app — no proprietary runtime.
 
 ## Develop
 
 ```bash
 npm install
-npm run dev      # start the dev server
-npm run build    # production build → dist/
-npm run preview  # preview the production build
+npm run dev        # start the dev server
+npm run build      # type-check + production build → dist/
+npm run preview    # preview the production build
+npm run typecheck  # type-check only (tsc --noEmit)
 ```
 
 ## Layout
 
-- `src/solver.js` — pure layout engine: grid sizing, backtracking solver,
+- `src/types.ts` — shared domain types (`State`, `TileElement`, `Actions`, …).
+- `src/solver.ts` — pure layout engine: grid sizing, backtracking solver,
   solution counting, 2×2 rotation quads, and dispersion optimisation.
-- `src/App.jsx` — UI and state; derives all view values from the current state.
-- `src/css.js` — small helper that turns inline-style strings into React style
+- `src/useCalculator.ts` — hook owning state and the action callbacks.
+- `src/deriveView.tsx` — pure `(state, actions) → view` derivation; exports the
+  inferred `View` type consumed by components.
+- `src/components/` — one component per UI section; `components/ui/` holds shared
+  primitives (`Toggle`, `Divider`).
+- `src/App.tsx` — thin composition of the above.
+- `src/css.ts` — small helper that turns inline-style strings into React style
   objects (keeps the markup close to the original design).
 - `public/tiles/` — the default tile artwork (A–L).

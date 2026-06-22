@@ -1,6 +1,7 @@
-import { css } from '../css.js'
+import { css } from '../css'
+import type { View } from '../deriveView'
 
-export default function Banners({ v }) {
+export default function Banners({ v }: { v: View }) {
   return (
     <>
       {v.placeModeOn && (

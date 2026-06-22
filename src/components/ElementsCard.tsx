@@ -1,6 +1,7 @@
-import { css } from '../css.js'
+import { css } from '../css'
+import type { View } from '../deriveView'
 
-export default function ElementsCard({ v }) {
+export default function ElementsCard({ v }: { v: View }) {
   return (
     <div style={css('background:#fbf6ec; border:1.5px solid #d9c8a4; border-radius:12px; padding:18px;')}>
       <div style={css('display:flex; align-items:baseline; justify-content:space-between; margin-bottom:4px;')}>

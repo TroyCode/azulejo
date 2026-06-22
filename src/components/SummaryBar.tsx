@@ -1,6 +1,7 @@
-import { css } from '../css.js'
+import { css } from '../css'
+import type { View } from '../deriveView'
 
-export default function SummaryBar({ v }) {
+export default function SummaryBar({ v }: { v: View }) {
   return (
     <div style={css('display:flex; flex-wrap:wrap; gap:10px;')}>
       <div style={css('background:#fbf6ec; border:1.5px solid #d9c8a4; border-radius:10px; padding:10px 16px; display:flex; align-items:baseline; gap:8px;')}>

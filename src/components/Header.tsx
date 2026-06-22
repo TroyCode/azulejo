@@ -1,6 +1,7 @@
-import { css } from '../css.js'
+import { css } from '../css'
+import type { View } from '../deriveView'
 
-export default function Header({ v }) {
+export default function Header({ v }: { v: View }) {
   return (
     <div style={css('display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; padding-bottom:18px; border-bottom:2px solid #c9b48d; margin-bottom:24px;')}>
       <div style={css('display:flex; align-items:center; gap:18px;')}>

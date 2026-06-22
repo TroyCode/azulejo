@@ -1,6 +1,7 @@
-import { css } from '../css.js'
+import { css } from '../css'
+import type { View } from '../deriveView'
 
-export default function DisplayBar({ v }) {
+export default function DisplayBar({ v }: { v: View }) {
   return (
     <div style={css('display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;')}>
       <div style={css('display:flex; align-items:center; gap:10px;')}>

@@ -1,8 +1,9 @@
-import { css } from '../css.js'
-import Toggle from './ui/Toggle.jsx'
-import Divider from './ui/Divider.jsx'
+import { css } from '../css'
+import type { View } from '../deriveView'
+import Toggle from './ui/Toggle'
+import Divider from './ui/Divider'
 
-export default function RulesCard({ v }) {
+export default function RulesCard({ v }: { v: View }) {
   return (
     <div style={css('background:#fbf6ec; border:1.5px solid #d9c8a4; border-radius:12px; padding:18px;')}>
       <div style={css('font-family:\'DM Serif Display\',serif; font-size:18px; color:#27408a; margin-bottom:14px;')}>排列規則</div>

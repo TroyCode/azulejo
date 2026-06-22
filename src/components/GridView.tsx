@@ -1,6 +1,7 @@
-import { css } from '../css.js'
+import { css } from '../css'
+import type { View } from '../deriveView'
 
-export default function GridView({ v }) {
+export default function GridView({ v }: { v: View }) {
   return (
     <div style={css('background:#fbf6ec; border:1.5px solid #d9c8a4; border-radius:12px; padding:22px;')}>
       <div style={css('width:max-content; max-width:100%; margin:0 auto;')}>

@@ -1,9 +1,40 @@
-import { dims, textColor } from './solver.js'
+import type { ChangeEvent, CSSProperties, DragEvent, MouseEvent, ReactNode } from 'react'
+import { dims, textColor } from './solver'
+import type { Actions, State } from './types'
+
+// One rendered grid cell. A handful of fields are only set for some cell kinds
+// (frame / empty / placement overlay), so they are optional.
+interface CellView {
+  letter: string
+  variation: number | string
+  showVar: boolean
+  showLetter: boolean
+  hasImg: boolean
+  img: string
+  showChip: boolean
+  chipText: string
+  isSlice: boolean
+  bg: string
+  fg: string
+  fontSize: string
+  varFontSize: string
+  imgEl?: ReactNode
+  imgTransform?: string
+  radius?: string
+  shadow?: string
+  showSliceMark?: boolean
+  onCellClick?: (() => void) | null
+  cellCursor?: string
+  placeable?: boolean
+  showPin?: boolean
+  pinColor?: string
+  pinFg?: string
+}
 
 // Pure derivation of every value the UI renders, computed from the current
 // state. Handlers are sourced from the actions bag so this stays a plain
 // function of (state, actions). Ported from the design's renderVals().
-export function deriveView(state, actions) {
+export function deriveView(state: State, actions: Actions) {
   const {
     updateEl, removeEl, addEl, reorder, setArea, setTile, toggleSlice, setAlign, setMode,
     toggleLabels, toggleSeam, toggleColUnique, toggleRowUnique, toggleDisperse, setDispStrength,
@@ -32,15 +63,15 @@ export function deriveView(state, actions) {
   const cellRadius = seam ? '3px' : '0px'
 
   // derive variations + counts from grid
-  const used = elements.map(() => 0)
-  const varCount = elements.map(() => ({}))
-  const positions = elements.map(() => [])
-  const cells = []
+  const used: number[] = elements.map(() => 0)
+  const varCount: Record<number, number>[] = elements.map(() => ({}))
+  const positions: number[][][] = elements.map(() => [])
+  const cells: CellView[] = []
   const fwR = frameOn ? Math.max(0, Math.min(Math.floor(Math.min(R, C) / 2), Math.floor(Number(frameWidth)) || 0)) : 0
-  const isFrameCell = (cr, cc) => fwR > 0 && (cr < fwR || cr >= R - fwR || cc < fwR || cc >= C - fwR)
-  const frameCellObj = () => ({ letter: '', variation: '', showVar: false, showLetter: false, hasImg: false, img: '', imgEl: null, imgTransform: 'none', showChip: false, chipText: '', isSlice: false, showSliceMark: false, radius: cellRadius, shadow: 'none', bg: frameColor, fg: '#fff', fontSize: fontPx, varFontSize: varPx })
+  const isFrameCell = (cr: number, cc: number) => fwR > 0 && (cr < fwR || cr >= R - fwR || cc < fwR || cc >= C - fwR)
+  const frameCellObj = (): CellView => ({ letter: '', variation: '', showVar: false, showLetter: false, hasImg: false, img: '', imgEl: null, imgTransform: 'none', showChip: false, chipText: '', isSlice: false, showSliceMark: false, radius: cellRadius, shadow: 'none', bg: frameColor, fg: '#fff', fontSize: fontPx, varFontSize: varPx })
   if (grid && grid.length === totalCells) {
-    const occ = elements.map(() => 0)
+    const occ: number[] = elements.map(() => 0)
     for (let pos = 0; pos < totalCells; pos++) {
       const cr = (pos / C) | 0, cc = pos % C
       if (isFrameCell(cr, cc)) { cells.push(frameCellObj()); continue }
@@ -62,7 +93,7 @@ export function deriveView(state, actions) {
       // anchor full-size tile to the UNCUT edges so slice cells crop (never squash)
       const leadingCol = !!colSlice[cc] && cc === 0
       const leadingRow = !!rowSlice[cr] && cr === 0
-      const imgStyle = {
+      const imgStyle: CSSProperties = {
         position: 'absolute', width: fwPx + 'px', height: fhPx + 'px',
         maxWidth: 'none', maxHeight: 'none', objectFit: 'cover', display: 'block',
         transform: 'rotate(' + rot + 'deg)',
@@ -71,7 +102,7 @@ export function deriveView(state, actions) {
       if (leadingRow) { imgStyle.bottom = '0' } else { imgStyle.top = '0' }
       cells.push({
         letter: el.name, variation: vv, showVar: vc > 1 && !hasImg, showLetter: !hasImg,
-        hasImg, img: hasImg ? el.img : '', imgTransform: 'rotate(' + rot + 'deg)',
+        hasImg, img: hasImg ? (el.img as string) : '', imgTransform: 'rotate(' + rot + 'deg)',
         imgEl: hasImg ? <img src={el.img} alt="" style={imgStyle} /> : null,
         radius: cellRadius, shadow: seam ? ('inset 0 0 0 1.5px rgba(255,255,255,.22), inset 0 0 0 3px ' + el.color) : 'none',
         showChip: hasImg && showLabels, chipText: el.name + (vc > 1 ? ('·' + vv) : ''),
@@ -90,7 +121,7 @@ export function deriveView(state, actions) {
 
   // ---- 2x2 placement overlay: pin dots + clickable cells when in place mode ----
   const placeMode = state.placeMode
-  const pinMap = {} // topleft index -> element color
+  const pinMap: Record<number, string> = {} // topleft index -> element color
   for (const pin of (state.quadPins || [])) {
     const el = elements.find((x) => x.name === pin.name)
     if (el) pinMap[pin.r * C + pin.c] = el.color
@@ -113,16 +144,16 @@ export function deriveView(state, actions) {
     name: el.name, quantity: el.quantity, variations: el.variations, color: el.color,
     img: el.img || '', hasImg: !!el.img, noImg: !el.img,
     imgEl: el.img ? <img src={el.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} /> : null,
-    onImg: (e) => setImg(i, e.target.files && e.target.files[0]),
-    onClearImg: (e) => { e.stopPropagation(); clearImg(i) },
-    onName: (e) => updateEl(i, 'name', e.target.value),
-    onQty: (e) => updateEl(i, 'quantity', e.target.value),
-    onVar: (e) => updateEl(i, 'variations', e.target.value),
-    onColor: (e) => updateEl(i, 'color', e.target.value),
+    onImg: (e: ChangeEvent<HTMLInputElement>) => setImg(i, e.target.files && e.target.files[0]),
+    onClearImg: (e: MouseEvent) => { e.stopPropagation(); clearImg(i) },
+    onName: (e: ChangeEvent<HTMLInputElement>) => updateEl(i, 'name', e.target.value),
+    onQty: (e: ChangeEvent<HTMLInputElement>) => updateEl(i, 'quantity', e.target.value),
+    onVar: (e: ChangeEvent<HTMLInputElement>) => updateEl(i, 'variations', e.target.value),
+    onColor: (e: ChangeEvent<HTMLInputElement>) => updateEl(i, 'color', e.target.value),
     onRemove: () => removeEl(i),
-    onDragStart: (e) => { dragIndex.current = i; if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move' },
-    onDragOver: (e) => { e.preventDefault() },
-    onDrop: (e) => { e.preventDefault(); reorder(dragIndex.current, i) },
+    onDragStart: (e: DragEvent) => { dragIndex.current = i; if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move' },
+    onDragOver: (e: DragEvent) => { e.preventDefault() },
+    onDrop: (e: DragEvent) => { e.preventDefault(); reorder(dragIndex.current, i) },
   }))
 
   // stats
@@ -130,7 +161,7 @@ export function deriveView(state, actions) {
   const statsView = elements.map((el, i) => {
     const cap = caps[i]
     const vc = Math.max(1, Math.floor(Number(el.variations)) || 1)
-    const breakdown = []
+    const breakdown: { label: string; count: number }[] = []
     if (vc > 1) for (let vv = 1; vv <= vc; vv++) breakdown.push({ label: el.name + vv, count: varCount[i][vv] || 0 })
     // average pairwise Manhattan distance between same-element tiles
     const ps = positions[i]
@@ -169,12 +200,12 @@ export function deriveView(state, actions) {
     dispTrack: state.disperse ? '#27408a' : '#d3c4a3', dispKnob: state.disperse ? 'translateX(20px)' : 'translateX(0)',
     dispStrengthLabel: ['—', '輕', '中', '較強', '強', '最強'][state.disperseStrength] || '中',
     toggleDisperse: () => toggleDisperse(),
-    onDispStrength: (e) => setDispStrength(e.target.value),
+    onDispStrength: (e: ChangeEvent<HTMLInputElement>) => setDispStrength(e.target.value),
     elNames: elements.map((el) => el.name),
     fpA: state.fpA ?? (elements[0] ? elements[0].name : ''),
     fpB: state.fpB ?? (elements[1] ? elements[1].name : (elements[0] ? elements[0].name : '')),
-    onFpA: (e) => setFp('fpA', e.target.value),
-    onFpB: (e) => setFp('fpB', e.target.value),
+    onFpA: (e: ChangeEvent<HTMLSelectElement>) => setFp('fpA', e.target.value),
+    onFpB: (e: ChangeEvent<HTMLSelectElement>) => setFp('fpB', e.target.value),
     addForbidden: () => addForbidden(),
     hasForbidden: (state.forbiddenPairs || []).length > 0,
     forbiddenView: (state.forbiddenPairs || []).map((p, i) => {
@@ -228,7 +259,7 @@ export function deriveView(state, actions) {
     toggleFrame: () => toggleFrame(),
     incFrame: () => setFrameWidth((Number(frameWidth) || 1) + 1),
     decFrame: () => setFrameWidth((Number(frameWidth) || 1) - 1),
-    onFrameColor: (e) => setFrameColor(e.target.value),
+    onFrameColor: (e: ChangeEvent<HTMLInputElement>) => setFrameColor(e.target.value),
     elementsView, statsView, cells,
     gridCols: colTracks.join(' '), gridRows: rowTracks.join(' '), gridMaxWidth: 'none',
     sliceTrack: slice ? '#27408a' : '#d3c4a3', sliceKnob: slice ? 'translateX(20px)' : 'translateX(0)',
@@ -261,9 +292,11 @@ export function deriveView(state, actions) {
       (slice
         ? ('邊緣剩餘 ' + (remW > 0.05 ? ('寬 ' + remW + 'cm') : '') + (remW > 0.05 && remH > 0.05 ? '、' : '') + (remH > 0.05 ? ('高 ' + remH + 'cm') : '') + ' 已用切片磁磚補滿(斜紋)。')
         : ('邊緣剩餘 ' + (remW > 0.05 ? ('寬 ' + remW + 'cm') : '') + (remW > 0.05 && remH > 0.05 ? '、' : '') + (remH > 0.05 ? ('高 ' + remH + 'cm') : '') + ' 不足一片,未計入。開啟切片可補滿。')),
-    onAreaW: (e) => setArea('areaW', e.target.value),
-    onAreaH: (e) => setArea('areaH', e.target.value),
-    onTileW: (e) => setTile('tileW', e.target.value),
-    onTileH: (e) => setTile('tileH', e.target.value),
+    onAreaW: (e: ChangeEvent<HTMLInputElement>) => setArea('areaW', e.target.value),
+    onAreaH: (e: ChangeEvent<HTMLInputElement>) => setArea('areaH', e.target.value),
+    onTileW: (e: ChangeEvent<HTMLInputElement>) => setTile('tileW', e.target.value),
+    onTileH: (e: ChangeEvent<HTMLInputElement>) => setTile('tileH', e.target.value),
   }
 }
+
+export type View = ReturnType<typeof deriveView>

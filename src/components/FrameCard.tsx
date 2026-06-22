@@ -1,6 +1,7 @@
-import { css } from '../css.js'
+import { css } from '../css'
+import type { View } from '../deriveView'
 
-export default function FrameCard({ v }) {
+export default function FrameCard({ v }: { v: View }) {
   return (
     <div style={css('background:#fbf6ec; border:1.5px solid #d9c8a4; border-radius:12px; padding:18px;')}>
       <div onClick={v.toggleFrame} style={css('display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer;')}>

@@ -1,8 +1,10 @@
+import type { State } from './types'
+
 // Prefix bundled tile art with Vite's base URL so it resolves under the
 // GitHub Pages project path in production and at "/" during local dev.
-const tile = (name) => `${import.meta.env.BASE_URL}tiles/${name}`
+const tile = (name: string) => `${import.meta.env.BASE_URL}tiles/${name}`
 
-export const INITIAL = {
+export const INITIAL: State = {
   areaW: 200,
   areaH: 160,
   tileW: 20,

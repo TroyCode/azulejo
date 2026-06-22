@@ -1,9 +1,10 @@
-// Pure tile-layout solver, ported verbatim from the 花磚排列計算器 design logic.
-// All functions are side-effect free (aside from time-budgeting via Date.now) and
-// operate on a plain `state` object, so they can be reused outside React.
+import type { State, Combos } from './types'
+
+// Adjacency restrictions: forb[a][b] === true means a and b may not touch.
+type Forb = (Record<number, boolean> | null)[] | null
 
 // ---- deterministic PRNG (mulberry32) ----
-export function rng(seed) {
+export function rng(seed: number): () => number {
   let t = seed >>> 0
   return () => {
     t += 0x6d2b79f5
@@ -14,7 +15,7 @@ export function rng(seed) {
 }
 
 // ---- readable text colour for a given background hex ----
-export function textColor(hex) {
+export function textColor(hex: string): string {
   const h = (hex || '#000000').replace('#', '')
   const r = parseInt(h.substring(0, 2), 16) || 0
   const g = parseInt(h.substring(2, 4), 16) || 0
@@ -24,7 +25,7 @@ export function textColor(hex) {
 }
 
 // ---- derive grid track layout from area ÷ tile size (+ edge slices & alignment) ----
-export function dims(state) {
+export function dims(state: State) {
   const aw = Math.max(1, Number(state.areaW) || 0)
   const ah = Math.max(1, Number(state.areaH) || 0)
   const tw = Math.max(1, Number(state.tileW) || 1)
@@ -36,8 +37,8 @@ export function dims(state) {
   const sliceX = state.slice && remW > 0.05
   const sliceY = state.slice && remH > 0.05
 
-  const buildTracks = (full, t, rem, sliced, align) => {
-    const w = [], isS = []
+  const buildTracks = (full: number, t: number, rem: number, sliced: boolean, align: string) => {
+    const w: number[] = [], isS: boolean[] = []
     const pushFull = () => { for (let i = 0; i < full; i++) { w.push(t); isS.push(false) } }
     if (!sliced || (full === 0 && rem <= 0.05)) { pushFull(); if (w.length === 0) { w.push(t); isS.push(false) } return { w, isS } }
     if (!sliced) { pushFull(); return { w, isS } }
@@ -56,31 +57,37 @@ export function dims(state) {
 }
 
 // ---- single-pass backtracking solver ----
-function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, colUnique, rowUnique, forb, quadSet, quadStartList, fw, quadPinsByE, medallionsOnly) {
+function solveOnce(
+  rows: number, cols: number, E: number, caps: number[], sudoku: boolean, even: boolean,
+  seed: number, cells: number, allowEmpty: boolean, colUnique: boolean, rowUnique: boolean,
+  forb: Forb, quadSet: boolean[] | null, quadStartList: (number[] | null)[], fw: number,
+  quadPinsByE: number[][] | null, medallionsOnly?: boolean,
+): { grid: (number | null)[]; vmap: number[] } | null {
   const rand = rng(seed)
-  const grid = new Array(cells).fill(null)
-  const vmap = new Array(cells).fill(0) // explicit variation for quad cells (0 = derive normally)
-  const counts = new Array(E).fill(0)
-  const idx = (r, c) => r * cols + c
+  const grid: (number | null)[] = new Array(cells).fill(null)
+  const vmap: number[] = new Array(cells).fill(0) // explicit variation for quad cells (0 = derive normally)
+  const counts: number[] = new Array(E).fill(0)
+  const idx = (r: number, c: number) => r * cols + c
 
   // reserve perimeter frame cells (not tiled)
   if (fw > 0) { for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (r < fw || r >= rows - fw || c < fw || c >= cols - fw) grid[idx(r, c)] = -3 }
 
   // pre-place 2x2 rotation quads (pinwheel: TL=1/0°, TR=2/90°, BR=3/180°, BL=4/270°)
   if (quadSet) {
-    const pinned = [], floating = []
+    const pinned: { e: number; s: number; pin: number }[] = []
+    const floating: { e: number; s: number }[] = []
     for (let e = 0; e < E; e++) if (quadSet[e]) {
       const n = Math.floor(caps[e] / 4)
       const pins = (quadPinsByE && quadPinsByE[e]) ? quadPinsByE[e] : []
       for (let k = 0; k < n; k++) {
-        const s = (quadStartList && quadStartList[e] && quadStartList[e][k]) ? quadStartList[e][k] : 1
+        const s = (quadStartList && quadStartList[e] && quadStartList[e]![k]) ? quadStartList[e]![k] : 1
         if (k < pins.length) pinned.push({ e, s, pin: pins[k] }); else floating.push({ e, s })
       }
     }
-    const putBlock = (e, p, s) => {
+    const putBlock = (e: number, p: number, s: number) => {
       const r = (p / cols) | 0, c = p % cols
       const p00 = p, p01 = idx(r, c + 1), p10 = idx(r + 1, c), p11 = idx(r + 1, c + 1)
-      const vv = (k) => ((s - 1 + k) % 4) + 1
+      const vv = (k: number) => ((s - 1 + k) % 4) + 1
       grid[p00] = e; vmap[p00] = vv(0); grid[p01] = e; vmap[p01] = vv(1); grid[p11] = e; vmap[p11] = vv(2); grid[p10] = e; vmap[p10] = vv(3)
       counts[e] += 4
     }
@@ -94,7 +101,7 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
     }
     // 2) place floating blocks at random free 2x2 windows
     if (floating.length) {
-      const tl = []
+      const tl: number[] = []
       for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) tl.push(r * cols + c)
       for (let i = tl.length - 1; i > 0; i--) { const j = (rand() * (i + 1)) | 0; const t = tl[i]; tl[i] = tl[j]; tl[j] = t }
       for (let i = floating.length - 1; i > 0; i--) { const j = (rand() * (i + 1)) | 0; const t = floating[i]; floating[i] = floating[j]; floating[j] = t }
@@ -126,7 +133,7 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
     return { grid: grid.slice(), vmap: vmap.slice() }
   }
 
-  const conflict = (r, c, e) => {
+  const conflict = (r: number, c: number, e: number): boolean => {
     if (sudoku) {
       for (let dr = -2; dr <= 2; dr++) {
         const rr = r + dr; if (rr < 0 || rr >= rows) continue
@@ -140,18 +147,18 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
     if (rowUnique) { for (let cc = 0; cc < cols; cc++) if (grid[idx(r, cc)] === e) return true }
     if (forb && forb[e]) {
       const nb = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]
-      for (let k = 0; k < 4; k++) { const rr = nb[k][0], cc = nb[k][1]; if (rr < 0 || rr >= rows || cc < 0 || cc >= cols) continue; const f = grid[idx(rr, cc)]; if (f != null && f >= 0 && forb[e][f]) return true }
+      for (let k = 0; k < 4; k++) { const rr = nb[k][0], cc = nb[k][1]; if (rr < 0 || rr >= rows || cc < 0 || cc >= cols) continue; const f = grid[idx(rr, cc)]; if (f != null && f >= 0 && forb[e]![f]) return true }
     }
     return false
   }
   let nodes = 0
   const budget = quadSet ? 4000000 : 500000
-  const rec = (pos) => {
+  const rec = (pos: number): boolean => {
     if (nodes++ > budget) throw 'budget'
     if (pos === cells) return true
     if (grid[pos] !== null) return rec(pos + 1) // already filled by a quad block
     const r = (pos / cols) | 0, c = pos % cols
-    const cand = []
+    const cand: { e: number; k: number; j: number }[] = []
     for (let e = 0; e < E; e++) {
       if (quadSet && quadSet[e]) continue // quad elements only appear as 2x2 blocks
       if (counts[e] >= caps[e]) continue
@@ -171,17 +178,21 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
     }
     return false
   }
-  try { if (rec(0)) return { grid: grid.slice(), vmap: vmap.slice() } } catch (_) { return null }
+  try { if (rec(0)) return { grid: grid.slice(), vmap: vmap.slice() } } catch { return null }
   return null
 }
 
 // ---- count distinct valid arrangements (capped + time-budgeted) ----
-function countSolutions(R, C, E, caps, sudoku, cells, allowEmpty, capN, budgetMs, colUnique, rowUnique, forb, fw) {
-  const counts = new Array(E).fill(0)
-  const grid = new Array(cells).fill(-2)
-  const idx = (r, c) => r * C + c
+function countSolutions(
+  R: number, C: number, E: number, caps: number[], sudoku: boolean, cells: number,
+  allowEmpty: boolean, capN: number, budgetMs: number, colUnique: boolean, rowUnique: boolean,
+  forb: Forb, fw: number,
+): Combos {
+  const counts: number[] = new Array(E).fill(0)
+  const grid: number[] = new Array(cells).fill(-2)
+  const idx = (r: number, c: number) => r * C + c
   if (fw > 0) { for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (r < fw || r >= R - fw || c < fw || c >= C - fw) grid[idx(r, c)] = -3 }
-  const conflict = (r, c, e) => {
+  const conflict = (r: number, c: number, e: number): boolean => {
     if (sudoku) {
       for (let dr = -2; dr <= 2; dr++) { const rr = r + dr; if (rr < 0 || rr >= R) continue
         for (let dc = -2; dc <= 2; dc++) { const cc = c + dc; if (cc < 0 || cc >= C) continue
@@ -191,21 +202,21 @@ function countSolutions(R, C, E, caps, sudoku, cells, allowEmpty, capN, budgetMs
     if (rowUnique) { for (let cc = 0; cc < C; cc++) if (grid[idx(r, cc)] === e) return true }
     if (forb && forb[e]) {
       const nb = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]
-      for (let k = 0; k < 4; k++) { const rr = nb[k][0], cc = nb[k][1]; if (rr < 0 || rr >= R || cc < 0 || cc >= C) continue; const f = grid[idx(rr, cc)]; if (f >= 0 && forb[e][f]) return true }
+      for (let k = 0; k < 4; k++) { const rr = nb[k][0], cc = nb[k][1]; if (rr < 0 || rr >= R || cc < 0 || cc >= C) continue; const f = grid[idx(rr, cc)]; if (f >= 0 && forb[e]![f]) return true }
     }
     return false
   }
   let total = 0, stop = false, timedOut = false
   const t0 = Date.now()
   let opCount = 0
-  const rec = (pos) => {
+  const rec = (pos: number): void => {
     if (stop) return
     if ((++opCount & 8191) === 0 && Date.now() - t0 > budgetMs) { stop = true; timedOut = true; return }
     if (pos === cells) { total++; if (total >= capN) stop = true; return }
     if (grid[pos] === -3) { rec(pos + 1); return }
     const r = (pos / C) | 0, c = pos % C
     // try least-used elements first so full arrangements complete quickly
-    const cand = []
+    const cand: number[] = []
     for (let e = 0; e < E; e++) {
       if (counts[e] >= caps[e]) continue
       if (conflict(r, c, e)) continue
@@ -226,10 +237,13 @@ function countSolutions(R, C, E, caps, sudoku, cells, allowEmpty, capN, budgetMs
 }
 
 // ---- simulated-annealing dispersion: swap tiles to spread same elements apart ----
-function optimizeSpread(grid, R, C, sudoku, colUnique, rowUnique, strength, seed, forb, vmap) {
+function optimizeSpread(
+  grid: number[], R: number, C: number, sudoku: boolean, colUnique: boolean, rowUnique: boolean,
+  strength: number, seed: number, forb: Forb, vmap: number[] | null,
+): number[] {
   const rand = rng(seed)
-  const idx = (r, c) => r * C + c
-  const groupPen = (ps) => {
+  const idx = (r: number, c: number) => r * C + c
+  const groupPen = (ps: number[]) => {
     let s = 0
     for (let a = 0; a < ps.length; a++) for (let b = a + 1; b < ps.length; b++) {
       const d = Math.abs(((ps[a] / C) | 0) - ((ps[b] / C) | 0)) + Math.abs((ps[a] % C) - (ps[b] % C))
@@ -238,7 +252,7 @@ function optimizeSpread(grid, R, C, sudoku, colUnique, rowUnique, strength, seed
     return s
   }
   // full validity of the element currently at position p (grid already holds tentative values)
-  const okAt = (p) => {
+  const okAt = (p: number) => {
     const e = grid[p]; if (e < 0) return true
     const r = (p / C) | 0, c = p % C
     if (sudoku) { for (let dr = -2; dr <= 2; dr++) { const rr = r + dr; if (rr < 0 || rr >= R) continue
@@ -246,12 +260,12 @@ function optimizeSpread(grid, R, C, sudoku, colUnique, rowUnique, strength, seed
     if (colUnique) { for (let rr = 0; rr < R; rr++) { const q = idx(rr, c); if (q !== p && grid[q] === e) return false } }
     if (rowUnique) { for (let cc = 0; cc < C; cc++) { const q = idx(r, cc); if (q !== p && grid[q] === e) return false } }
     if (forb && forb[e]) { const nb = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]
-      for (let k = 0; k < 4; k++) { const rr = nb[k][0], cc = nb[k][1]; if (rr < 0 || rr >= R || cc < 0 || cc >= C) continue; const f = grid[idx(rr, cc)]; if (f >= 0 && forb[e][f]) return false } }
+      for (let k = 0; k < 4; k++) { const rr = nb[k][0], cc = nb[k][1]; if (rr < 0 || rr >= R || cc < 0 || cc >= C) continue; const f = grid[idx(rr, cc)]; if (f >= 0 && forb[e]![f]) return false } }
     return true
   }
-  const posByEl = new Map()
-  const filled = []
-  for (let i = 0; i < grid.length; i++) { if (vmap && vmap[i] > 0) continue; const e = grid[i]; if (e >= 0) { filled.push(i); if (!posByEl.has(e)) posByEl.set(e, []); posByEl.get(e).push(i) } }
+  const posByEl = new Map<number, number[]>()
+  const filled: number[] = []
+  for (let i = 0; i < grid.length; i++) { if (vmap && vmap[i] > 0) continue; const e = grid[i]; if (e >= 0) { filled.push(i); if (!posByEl.has(e)) posByEl.set(e, []); posByEl.get(e)!.push(i) } }
   if (filled.length < 2) return grid
   const cells = grid.length
   const iters = Math.min(120000, Math.max(2000, strength * cells * 12))
@@ -266,7 +280,7 @@ function optimizeSpread(grid, R, C, sudoku, colUnique, rowUnique, strength, seed
     if (ea === eb) { T *= cool; continue }
     grid[a] = eb; grid[b] = ea // tentative swap
     if (!okAt(a) || !okAt(b)) { grid[a] = ea; grid[b] = eb; T *= cool; continue }
-    const pa = posByEl.get(ea), pb = posByEl.get(eb)
+    const pa = posByEl.get(ea)!, pb = posByEl.get(eb)!
     const pa2 = pa.map(x => x === a ? b : x)
     const pb2 = pb.map(x => x === b ? a : x)
     const delta = (groupPen(pa2) + groupPen(pb2)) - (groupPen(pa) + groupPen(pb))
@@ -281,7 +295,7 @@ function optimizeSpread(grid, R, C, sudoku, colUnique, rowUnique, strength, seed
 }
 
 // ---- top-level solve: returns a state patch { grid, vmap, warning, stale, combos } ----
-export function solve(state, reseed) {
+export function solve(state: State, reseed: boolean): Partial<State> {
   const { sudoku, even, elements, colUnique, rowUnique, disperse, disperseStrength, forbiddenPairs, quadEls, quadStart, frameOn, frameWidth, quadPins } = state
   const { rows: R, cols: C } = dims(state)
   const E = elements.length
@@ -290,8 +304,9 @@ export function solve(state, reseed) {
   const interiorCells = Math.max(0, R - 2 * fw) * Math.max(0, C - 2 * fw)
   const caps = elements.map(e => Math.max(0, Math.floor(Number(e.quantity)) || 0))
   // quad elements (2x2 rotation groups): need 4 variations & at least one full block
-  let quadSet = null, quadCells = 0
-  const quadStartArr = elements.map(() => null)
+  let quadSet: boolean[] | null = null
+  let quadCells = 0
+  const quadStartArr: (number[] | null)[] = elements.map(() => null)
   ;(quadEls || []).forEach(nm => {
     const i = elements.findIndex(el => el.name === nm)
     if (i < 0) return
@@ -304,15 +319,33 @@ export function solve(state, reseed) {
       quadStartArr[i] = Array.from({ length: blocks }, (_, k) => (Math.round((Number(arr[k]) || 0) / 90) % 4) + 1)
     }
   })
+  void quadCells
   const effCap = caps.map((c, i) => (quadSet && quadSet[i]) ? (Math.floor(c / 4) * 4) : c)
   const totalCap = effCap.reduce((a, b) => a + b, 0)
   const allowEmpty = totalCap < interiorCells
 
+  if (E === 0) { return { grid: null, warning: '請至少新增一個元素。', stale: false, combos: null } }
+
+  const nameIdx: Record<string, number> = {}
+  elements.forEach((el, i) => { nameIdx[el.name] = i })
+  let forb: Forb = null
+  for (const p of (forbiddenPairs || [])) {
+    const i = nameIdx[p.a], j = nameIdx[p.b]
+    if (i != null && j != null && i !== j) {
+      if (!forb) forb = elements.map((): Record<number, boolean> | null => null)
+      if (!forb[i]) forb[i] = {}
+      if (!forb[j]) forb[j] = {}
+      forb[i]![j] = true
+      forb[j]![i] = true
+    }
+  }
+
   // pinned 2x2 positions per element (top-left index), valid & within block count
-  let quadPinsByE = null
+  let quadPinsByE: number[][] | null = null
   if (quadSet) {
-    quadPinsByE = elements.map(() => [])
-    const nm2i = {}; elements.forEach((el, i) => { nm2i[el.name] = i })
+    const byE: number[][] = elements.map((): number[] => [])
+    const nm2i: Record<string, number> = {}
+    elements.forEach((el, i) => { nm2i[el.name] = i })
     for (const pin of (quadPins || [])) {
       const i = nm2i[pin.name]
       if (i == null || !quadSet[i]) continue
@@ -320,22 +353,14 @@ export function solve(state, reseed) {
       // 2x2 top-left must keep all 4 cells inside the interior (outside frame)
       if (r < fw || c < fw || r + 1 > R - 1 - fw || c + 1 > C - 1 - fw) continue
       const maxBlocks = Math.floor(caps[i] / 4)
-      if (quadPinsByE[i].length >= maxBlocks) continue
-      quadPinsByE[i].push(r * C + c)
+      if (byE[i].length >= maxBlocks) continue
+      byE[i].push(r * C + c)
     }
-  }
-
-  if (E === 0) { return { grid: null, warning: '請至少新增一個元素。', stale: false, combos: null } }
-
-  const nameIdx = {}; elements.forEach((el, i) => { nameIdx[el.name] = i })
-  let forb = null
-  for (const p of (forbiddenPairs || [])) {
-    const i = nameIdx[p.a], j = nameIdx[p.b]
-    if (i != null && j != null && i !== j) { if (!forb) forb = elements.map(() => null); if (!forb[i]) forb[i] = {}; if (!forb[j]) forb[j] = {}; forb[i][j] = true; forb[j][i] = true }
+    quadPinsByE = byE
   }
 
   const base = reseed ? (Date.now() % 2147483647) : 12345
-  let res = null
+  let res: { grid: (number | null)[]; vmap: number[] } | null = null
   const t0 = Date.now()
   for (let a = 0; a < 20000 && !res; a++) {
     res = solveOnce(R, C, E, caps, sudoku, even, base + a * 1013904223, cells, allowEmpty, colUnique, rowUnique, forb, quadSet, quadStartArr, fw, quadPinsByE)
@@ -352,10 +377,11 @@ export function solve(state, reseed) {
     }
     return { grid: null, vmap: null, warning: '在目前限制下找不到合法排列 — 請關閉部分規則(九宮格/直排/橫排不重複)、減少 2×2 旋轉組、增加元素數量,或調整尺寸後再試。', stale: false, combos: null }
   }
-  let grid = res.grid, vmap = res.vmap
-  let warning = null
+  let grid: (number | null)[] = res.grid
+  const vmap = res.vmap
+  let warning: string | null = null
   if (allowEmpty) warning = '可填磁磚總數(' + totalCap + ')少於內圈格子數(' + interiorCells + '),已有 ' + (interiorCells - totalCap) + ' 格留白。'
-  if (disperse) grid = optimizeSpread(grid, R, C, sudoku, colUnique, rowUnique, disperseStrength, base ^ 0x9e3779b9, forb, vmap)
+  if (disperse) grid = optimizeSpread(grid as number[], R, C, sudoku, colUnique, rowUnique, disperseStrength, base ^ 0x9e3779b9, forb, vmap)
   const combos = quadSet ? null : countSolutions(R, C, E, caps, sudoku, cells, allowEmpty, 1000000, 700, colUnique, rowUnique, forb, fw)
   return { grid, vmap, warning, stale: false, combos }
 }
