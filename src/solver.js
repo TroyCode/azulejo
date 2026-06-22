@@ -56,7 +56,7 @@ export function dims(state) {
 }
 
 // ---- single-pass backtracking solver ----
-function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, colUnique, rowUnique, forb, quadSet, quadStartList, fw) {
+function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, colUnique, rowUnique, forb, quadSet, quadStartList, fw, quadPinsByE, medallionsOnly) {
   const rand = rng(seed)
   const grid = new Array(cells).fill(null)
   const vmap = new Array(cells).fill(0) // explicit variation for quad cells (0 = derive normally)
@@ -68,14 +68,37 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
 
   // pre-place 2x2 rotation quads (pinwheel: TL=1/0°, TR=2/90°, BR=3/180°, BL=4/270°)
   if (quadSet) {
-    const blocks = []
-    for (let e = 0; e < E; e++) if (quadSet[e]) { const n = Math.floor(caps[e] / 4); for (let k = 0; k < n; k++) { const s = (quadStartList && quadStartList[e] && quadStartList[e][k]) ? quadStartList[e][k] : 1; blocks.push({ e, s }) } }
-    if (blocks.length) {
+    const pinned = [], floating = []
+    for (let e = 0; e < E; e++) if (quadSet[e]) {
+      const n = Math.floor(caps[e] / 4)
+      const pins = (quadPinsByE && quadPinsByE[e]) ? quadPinsByE[e] : []
+      for (let k = 0; k < n; k++) {
+        const s = (quadStartList && quadStartList[e] && quadStartList[e][k]) ? quadStartList[e][k] : 1
+        if (k < pins.length) pinned.push({ e, s, pin: pins[k] }); else floating.push({ e, s })
+      }
+    }
+    const putBlock = (e, p, s) => {
+      const r = (p / cols) | 0, c = p % cols
+      const p00 = p, p01 = idx(r, c + 1), p10 = idx(r + 1, c), p11 = idx(r + 1, c + 1)
+      const vv = (k) => ((s - 1 + k) % 4) + 1
+      grid[p00] = e; vmap[p00] = vv(0); grid[p01] = e; vmap[p01] = vv(1); grid[p11] = e; vmap[p11] = vv(2); grid[p10] = e; vmap[p10] = vv(3)
+      counts[e] += 4
+    }
+    // 1) place pinned blocks at exact positions (must fit & be empty)
+    for (const blk of pinned) {
+      const p = blk.pin; const r = (p / cols) | 0, c = p % cols
+      if (r < 0 || r >= rows - 1 || c < 0 || c >= cols - 1) { if (medallionsOnly) continue; return null }
+      const p00 = p, p01 = idx(r, c + 1), p10 = idx(r + 1, c), p11 = idx(r + 1, c + 1)
+      if (grid[p00] !== null || grid[p01] !== null || grid[p10] !== null || grid[p11] !== null) { if (medallionsOnly) continue; return null }
+      putBlock(blk.e, p, blk.s)
+    }
+    // 2) place floating blocks at random free 2x2 windows
+    if (floating.length) {
       const tl = []
       for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) tl.push(r * cols + c)
       for (let i = tl.length - 1; i > 0; i--) { const j = (rand() * (i + 1)) | 0; const t = tl[i]; tl[i] = tl[j]; tl[j] = t }
-      for (let i = blocks.length - 1; i > 0; i--) { const j = (rand() * (i + 1)) | 0; const t = blocks[i]; blocks[i] = blocks[j]; blocks[j] = t }
-      for (const blk of blocks) {
+      for (let i = floating.length - 1; i > 0; i--) { const j = (rand() * (i + 1)) | 0; const t = floating[i]; floating[i] = floating[j]; floating[j] = t }
+      for (const blk of floating) {
         const e = blk.e
         let placed = false
         for (let t = 0; t < tl.length; t++) {
@@ -90,14 +113,17 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
             if (grid[idx(rr, cc)] === e) { near = true; break }
           }
           if (near) continue
-          const s = blk.s || 1 // start variation 1..4 (0/90/180/270°) for THIS block
-          const vv = (k) => ((s - 1 + k) % 4) + 1 // clockwise from TL
-          grid[p00] = e; vmap[p00] = vv(0); grid[p01] = e; vmap[p01] = vv(1); grid[p11] = e; vmap[p11] = vv(2); grid[p10] = e; vmap[p10] = vv(3)
-          counts[e] += 4; placed = true; break
+          putBlock(e, p, blk.s); placed = true; break
         }
-        if (!placed) return null
+        if (!placed && !medallionsOnly) return null
       }
     }
+  }
+
+  // medallions-only fallback: leave the rest empty (degraded preview when full fill is infeasible)
+  if (medallionsOnly) {
+    for (let i = 0; i < cells; i++) if (grid[i] === null) grid[i] = -1
+    return { grid: grid.slice(), vmap: vmap.slice() }
   }
 
   const conflict = (r, c, e) => {
@@ -119,7 +145,7 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
     return false
   }
   let nodes = 0
-  const budget = 500000
+  const budget = quadSet ? 4000000 : 500000
   const rec = (pos) => {
     if (nodes++ > budget) throw 'budget'
     if (pos === cells) return true
@@ -130,7 +156,7 @@ function solveOnce(rows, cols, E, caps, sudoku, even, seed, cells, allowEmpty, c
       if (quadSet && quadSet[e]) continue // quad elements only appear as 2x2 blocks
       if (counts[e] >= caps[e]) continue
       if (conflict(r, c, e)) continue
-      cand.push({ e, k: even ? counts[e] : e, j: rand() })
+      cand.push({ e, k: even ? (counts[e] + rand() * 2.5) : e, j: rand() })
     }
     cand.sort((a, b) => (a.k - b.k) || (a.j - b.j))
     for (const { e } of cand) {
@@ -256,7 +282,7 @@ function optimizeSpread(grid, R, C, sudoku, colUnique, rowUnique, strength, seed
 
 // ---- top-level solve: returns a state patch { grid, vmap, warning, stale, combos } ----
 export function solve(state, reseed) {
-  const { sudoku, even, elements, colUnique, rowUnique, disperse, disperseStrength, forbiddenPairs, quadEls, quadStart, frameOn, frameWidth } = state
+  const { sudoku, even, elements, colUnique, rowUnique, disperse, disperseStrength, forbiddenPairs, quadEls, quadStart, frameOn, frameWidth, quadPins } = state
   const { rows: R, cols: C } = dims(state)
   const E = elements.length
   const cells = R * C
@@ -282,6 +308,23 @@ export function solve(state, reseed) {
   const totalCap = effCap.reduce((a, b) => a + b, 0)
   const allowEmpty = totalCap < interiorCells
 
+  // pinned 2x2 positions per element (top-left index), valid & within block count
+  let quadPinsByE = null
+  if (quadSet) {
+    quadPinsByE = elements.map(() => [])
+    const nm2i = {}; elements.forEach((el, i) => { nm2i[el.name] = i })
+    for (const pin of (quadPins || [])) {
+      const i = nm2i[pin.name]
+      if (i == null || !quadSet[i]) continue
+      const r = pin.r, c = pin.c
+      // 2x2 top-left must keep all 4 cells inside the interior (outside frame)
+      if (r < fw || c < fw || r + 1 > R - 1 - fw || c + 1 > C - 1 - fw) continue
+      const maxBlocks = Math.floor(caps[i] / 4)
+      if (quadPinsByE[i].length >= maxBlocks) continue
+      quadPinsByE[i].push(r * C + c)
+    }
+  }
+
   if (E === 0) { return { grid: null, warning: '請至少新增一個元素。', stale: false, combos: null } }
 
   const nameIdx = {}; elements.forEach((el, i) => { nameIdx[el.name] = i })
@@ -295,11 +338,18 @@ export function solve(state, reseed) {
   let res = null
   const t0 = Date.now()
   for (let a = 0; a < 20000 && !res; a++) {
-    res = solveOnce(R, C, E, caps, sudoku, even, base + a * 1013904223, cells, allowEmpty, colUnique, rowUnique, forb, quadSet, quadStartArr, fw)
-    if (Date.now() - t0 > 3500) break
+    res = solveOnce(R, C, E, caps, sudoku, even, base + a * 1013904223, cells, allowEmpty, colUnique, rowUnique, forb, quadSet, quadStartArr, fw, quadPinsByE)
+    if (Date.now() - t0 > (quadSet ? 7000 : 3500)) break
   }
 
   if (!res) {
+    // degraded fallback: show pinned/floating medallions, leave rest empty, with a clear message
+    if (quadSet) {
+      const partial = solveOnce(R, C, E, caps, sudoku, even, base, cells, allowEmpty, colUnique, rowUnique, forb, quadSet, quadStartArr, fw, quadPinsByE, true)
+      if (partial) {
+        return { grid: partial.grid, vmap: partial.vmap, warning: '在目前限制下無法把其餘格子填滿 — 已先放上指定的 2×2 醫章。請把醫章位置錯開(避免同列/同欄太近)、減少醫章、或放寬九宮格等規則。', stale: false, combos: null }
+      }
+    }
     return { grid: null, vmap: null, warning: '在目前限制下找不到合法排列 — 請關閉部分規則(九宮格/直排/橫排不重複)、減少 2×2 旋轉組、增加元素數量,或調整尺寸後再試。', stale: false, combos: null }
   }
   let grid = res.grid, vmap = res.vmap

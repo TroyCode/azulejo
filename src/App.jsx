@@ -47,6 +47,8 @@ const INITIAL = {
   stale: false,
   quadEls: [],
   quadStart: {},
+  quadPins: [],
+  placeMode: null,
   frameOn: false,
   frameWidth: 1,
   frameColor: '#e7d9b6',
@@ -122,6 +124,15 @@ export default function App() {
     arr[idx] = deg; map[name] = arr
     return { ...s, quadStart: map, stale: true }
   })
+  const setPlaceMode = (name) => setState((s) => ({ ...s, placeMode: s.placeMode === name ? null : name }))
+  const pinAt = (r, c) => setState((s) => {
+    const nm = s.placeMode; if (!nm) return s
+    const pins = (s.quadPins || []).slice()
+    const at = pins.findIndex((p) => p.name === nm && p.r === r && p.c === c)
+    if (at >= 0) pins.splice(at, 1); else pins.push({ name: nm, r, c })
+    return { ...s, quadPins: pins, stale: true }
+  })
+  const clearPins = (name) => setState((s) => ({ ...s, quadPins: (s.quadPins || []).filter((p) => p.name !== name), stale: true }))
   const toggleFrame = () => setState((s) => ({ ...s, frameOn: !s.frameOn, stale: true }))
   const setFrameWidth = (val) => merge({ frameWidth: Math.max(1, Math.min(10, Math.floor(Number(val)) || 1)), stale: true })
   const setFrameColor = (val) => merge({ frameColor: val })
@@ -319,18 +330,29 @@ export default function App() {
                         <span style={css(`font-size:13px; font-weight:700; color:${q.textColor};`)}>{q.label}</span>
                       </div>
                       {q.on && (
-                        <div style={css('display:flex; flex-direction:column; gap:5px;')}>
-                          {q.blocks.map((blk, bi) => (
-                            <div key={bi} style={css('display:flex; align-items:center; gap:6px;')}>
-                              <span style={css('font-size:11px; font-weight:700; color:#a8997a; width:30px; flex:none;')}>{blk.label}</span>
-                              <div style={css('display:flex; gap:2px; background:#efe7d6; border-radius:7px; padding:2px;')}>
-                                {blk.angles.map((ang, ai) => (
-                                  <div key={ai} onClick={ang.onClick} style={css(`cursor:pointer; font-size:12px; font-weight:700; padding:4px 9px; border-radius:5px; background:${ang.bg}; color:${ang.fg}; box-shadow:${ang.shadow};`)}>{ang.label}</div>
-                                ))}
+                        <>
+                          <div style={css('display:flex; flex-direction:column; gap:5px;')}>
+                            {q.blocks.map((blk, bi) => (
+                              <div key={bi} style={css('display:flex; align-items:center; gap:6px;')}>
+                                <span style={css('font-size:11px; font-weight:700; color:#a8997a; width:30px; flex:none;')}>{blk.label}</span>
+                                <div style={css('display:flex; gap:2px; background:#efe7d6; border-radius:7px; padding:2px;')}>
+                                  {blk.angles.map((ang, ai) => (
+                                    <div key={ai} onClick={ang.onClick} style={css(`cursor:pointer; font-size:12px; font-weight:700; padding:4px 9px; border-radius:5px; background:${ang.bg}; color:${ang.fg}; box-shadow:${ang.shadow};`)}>{ang.label}</div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                          <div style={css('display:flex; align-items:center; gap:7px; margin-top:7px;')}>
+                            <div onClick={q.onPlace} style={css(`cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px; font-weight:800; padding:5px 11px; border-radius:7px; background:${q.placeBg}; color:${q.placeFg}; border:1.5px solid ${q.placeBorder};`)}>{q.placeLabel}</div>
+                            {q.hasPins && (
+                              <>
+                                <span style={css('font-size:11px; font-weight:700; color:#7c6c4f;')}>已釘 {q.pinCount}</span>
+                                <div onClick={q.onClearPins} style={css('cursor:pointer; font-size:11px; font-weight:700; color:#c2755c; text-decoration:underline;')}>清除</div>
+                              </>
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   ))}
@@ -405,6 +427,9 @@ export default function App() {
             </div>
 
             {/* Banners */}
+            {v.placeModeOn && (
+              <div style={css('background:#e6eefb; border:1.5px solid #97b3e6; border-radius:10px; padding:11px 16px; font-size:13.5px; font-weight:700; color:#27408a; display:flex; align-items:center; gap:8px;')}>⊞　放置「{v.placeModeName}」醫章 — 點內圈格子設為 2×2 左上角(再點一次取消),完成後按〔重新排列〕。</div>
+            )}
             {v.stale && (
               <div style={css('background:#fdf3dc; border:1.5px solid #e7c873; border-radius:10px; padding:11px 16px; font-size:13.5px; font-weight:600; color:#9a7012; display:flex; align-items:center; gap:8px;')}>⚠　設定已變更 — 按〔重新排列〕套用新結果。</div>
             )}
@@ -443,12 +468,14 @@ export default function App() {
               <div style={css('width:max-content; max-width:100%; margin:0 auto;')}>
                 <div style={css(`display:grid; grid-template-columns:${v.gridCols}; grid-template-rows:${v.gridRows}; gap:${v.gridGap}; background:${v.gridBg}; padding:${v.gridPad}; border-radius:6px;`)}>
                   {v.cells.map((cell, i) => (
-                    <div key={i} style={css(`position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; background:${cell.bg}; color:${cell.fg}; border-radius:${cell.radius}; box-shadow:${cell.shadow}; font-family:'Karla',sans-serif; font-weight:800; line-height:1; font-size:${cell.fontSize};`)}>
+                    <div key={i} onClick={cell.onCellClick || undefined} style={css(`position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; cursor:${cell.cellCursor}; background:${cell.bg}; color:${cell.fg}; border-radius:${cell.radius}; box-shadow:${cell.shadow}; font-family:'Karla',sans-serif; font-weight:800; line-height:1; font-size:${cell.fontSize};`)}>
                       {cell.hasImg && cell.imgEl}
                       {cell.showLetter && (<span>{cell.letter}</span>)}
                       {cell.showVar && (<span style={css(`position:absolute; right:3px; bottom:2px; font-weight:700; opacity:.78; font-size:${cell.varFontSize};`)}>{cell.variation}</span>)}
                       {cell.showChip && (<span style={css('position:absolute; left:3px; top:3px; background:rgba(20,16,8,.55); color:#fff; font-weight:800; font-size:10px; line-height:1; padding:2px 4px; border-radius:4px;')}>{cell.chipText}</span>)}
                       {cell.showSliceMark && (<div style={css('position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.85); border-radius:3px; -webkit-mask:repeating-linear-gradient(45deg, #000 0 4px, transparent 4px 8px); mask:repeating-linear-gradient(45deg, #000 0 4px, transparent 4px 8px);')}></div>)}
+                      {cell.placeable && (<div style={css('position:absolute; inset:1px; pointer-events:none; border:1.5px dashed rgba(39,64,138,.5); border-radius:3px;')}></div>)}
+                      {cell.showPin && (<div style={css(`position:absolute; left:2px; top:2px; width:13px; height:13px; pointer-events:none; border-radius:50%; background:${cell.pinColor}; box-shadow:0 0 0 2px #fff, 0 1px 2px rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; color:${cell.pinFg}; font-size:8px; font-weight:800;`)}>⊞</div>)}
                     </div>
                   ))}
                 </div>
@@ -574,6 +601,26 @@ export default function App() {
     const tileableCells = totalCells - frameCellCount
     const emptyCount = grid ? (tileableCells - filledCount) : tileableCells
 
+    // ---- 2x2 placement overlay: pin dots + clickable cells when in place mode ----
+    const placeMode = state.placeMode
+    const pinMap = {} // topleft index -> element color
+    for (const pin of (state.quadPins || [])) {
+      const el = elements.find((x) => x.name === pin.name)
+      if (el) pinMap[pin.r * C + pin.c] = el.color
+    }
+    for (let pos = 0; pos < cells.length && pos < totalCells; pos++) {
+      const cr = (pos / C) | 0, cc = pos % C
+      const isInterior = !isFrameCell(cr, cc)
+      const validTopLeft = isInterior && (cr + 1 <= R - 1 - fwR) && (cc + 1 <= C - 1 - fwR) && !isFrameCell(cr + 1, cc + 1)
+      const co = cells[pos]
+      co.onCellClick = (placeMode && validTopLeft) ? (() => pinAt(cr, cc)) : null
+      co.cellCursor = placeMode && validTopLeft ? 'pointer' : 'default'
+      co.placeable = !!placeMode && validTopLeft && pinMap[pos] == null
+      co.showPin = pinMap[pos] != null
+      co.pinColor = pinMap[pos] || 'transparent'
+      co.pinFg = textColor(pinMap[pos] || '#888')
+    }
+
     // element rows
     const elementsView = elements.map((el, i) => ({
       name: el.name, quantity: el.quantity, variations: el.variations, color: el.color,
@@ -675,11 +722,20 @@ export default function App() {
           bg: on ? '#e6eefb' : '#fff', border: on ? '#27408a' : '#e6d8ba',
           textColor: on ? '#27408a' : '#9a8a6b',
           blocks,
+          onPlace: () => setPlaceMode(el.name),
+          placeLabel: state.placeMode === el.name ? '✓ 點格子放置中' : '＋ 指定位置',
+          placeBg: state.placeMode === el.name ? '#27408a' : '#fff',
+          placeFg: state.placeMode === el.name ? '#fff7ec' : '#27408a',
+          placeBorder: state.placeMode === el.name ? '#27408a' : '#bcd0f0',
+          hasPins: (state.quadPins || []).some((p) => p.name === el.name),
+          pinCount: (state.quadPins || []).filter((p) => p.name === el.name).length,
+          onClearPins: () => clearPins(el.name),
         }
       }),
       hasQuadOpts: elements.some((el) => (Math.max(1, Math.floor(Number(el.variations)) || 1) === 4)),
       noQuadOpts: !elements.some((el) => (Math.max(1, Math.floor(Number(el.variations)) || 1) === 4)),
       frameOn, frameColor,
+      placeModeOn: !!placeMode, placeModeName: placeMode || '',
       frameTrack: frameOn ? '#27408a' : '#d3c4a3', frameKnob: frameOn ? 'translateX(20px)' : 'translateX(0)',
       frameWidthLabel: (frameWidth || 1) + ' 圈',
       toggleFrame: () => toggleFrame(),
