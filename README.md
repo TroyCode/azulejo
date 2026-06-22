@@ -16,7 +16,16 @@ npm run dev        # start the dev server
 npm run build      # type-check + production build → dist/
 npm run preview    # preview the production build
 npm run typecheck  # type-check only (tsc --noEmit)
+npm test           # run the solver unit tests (Vitest)
 ```
+
+## Tests
+
+`src/solver.test.ts` (Vitest) covers the pure algorithm in `src/solver.ts`: the
+PRNG, `textColor`, grid sizing/slicing/alignment in `dims`, and `solve`'s layout
+invariants (caps, 3×3 sudoku distinctness, row/column uniqueness, adjacency
+restrictions, framing, edge blanks, 2×2 rotation medallions + pinning, exact
+combination counting, and determinism). CI runs them before every deploy.
 
 ## Layout
 
